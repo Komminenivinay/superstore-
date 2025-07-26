@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Data Performance Dashboard</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .chart-container {
+      margin-top: 40px;
+    }
+    .chart {
+      margin-bottom: 50px;
+    }
+  </style>
+</head>
+<body>
+  <h2>📊 Interactive Data Performance Dashboard</h2>
+  <input type="file" id="upload" accept=".json">
+
+  <div class="chart-container">
+    <div id="salesByState" class="chart"></div>
+    <div id="salesOverTime" class="chart"></div>
+    <div id="salesByShape" class="chart"></div>
+    <div id="salesByCity" class="chart"></div>
+    <div id="missingData" class="chart"></div>
+  </div>
+
+  <script>
+    document.getElementById('upload').addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (event) {
+        const rawData = JSON.parse(event.target.result);
+
+        const states = {}, times = {}, shapes = {}, cities = {}, missingFields = {
+          Number: 0, State: 0, Time: 0, City: 0, Shape: 0
+        };
+
+        rawData.forEach(entry => {
+          // Count sales by state
+          const state = entry.State || 'Unknown';
+          states[state] = (states[state] || 0) + 1;
+
+          // Count sales over time
+          const time = entry.Time ? new Date(entry.Time).getFullYear() : 'Unknown';
+          times[time] = (times[time] || 0) + 1;
+
+          // Count by product type (shape)
+          const shape = entry["Shape Reported"] || 'Unknown';
+          shapes[shape] = (shapes[shape] || 0) + 1;
+
+          // Count sales by city
+          const city = entry.City || 'Unknown';
+          cities[city] = (cities[city] || 0) + 1;
+
+          // Missing data checks
+          if (!entry.Number) missingFields.Number++;
+          if (!entry.State) missingFields.State++;
+          if (!entry.Time) missingFields.Time++;
+          if (!entry.City) missingFields.City++;
+          if (!entry["Shape Reported"]) missingFields.Shape++;
+        });
+
+        // 1. Sales by State
+        Plotly.newPlot('salesByState', [{
+          x: Object.keys(states),
+          y: Object.values(states),
+          type: 'bar',
+          marker: { color: 'teal' }
+        }], { title: 'Sales (Reports) by State' });
+
+        // 2. Sales Over Time
+        Plotly.newPlot('salesOverTime', [{
+          x: Object.keys(times),
+          y: Object.values(times),
+          type: 'scatter',
+          mode: 'lines+markers',
+          marker: { color: 'blue' }
+        }], { title: 'Sales Over Time (by Year)' });
+
+        // 3. Sales by Product Type (Shape)
+        Plotly.newPlot('salesByShape', [{
+          labels: Object.keys(shapes),
+          values: Object.values(shapes),
+          type: 'pie'
+        }], { title: 'Sales by Product Type (Shape)' });
+
+        // 4. Sales by City (Top 10)
+        const sortedCities = Object.entries(cities).sort((a, b) => b[1] - a[1]).slice(0, 10);
+        Plotly.newPlot('salesByCity', [{
+          x: sortedCities.map(c => c[0]),
+          y: sortedCities.map(c => c[1]),
+          type: 'bar',
+          marker: { color: 'purple' }
+        }], { title: 'Top 10 Cities by Sales Volume' });
+
+        // 5. Missing Data Fields
+        Plotly.newPlot('missingData', [{
+          x: Object.keys(missingFields),
+          y: Object.values(missingFields),
+          type: 'bar',
+          marker: { color: 'crimson' }
+        }], { title: 'Missing Data Field Counts' });
+      };
+      reader.readAsText(file);
+    });
+  </script>
+</body>
+</html>
